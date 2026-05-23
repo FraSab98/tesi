@@ -1,0 +1,8 @@
+# Pipeline multimodale (canale audio/NLP) — dipendenze pesanti
+openai-whisper>=20240930
+spacy>=3.8.0
+librosa>=0.10.0
+transformers>=4.47.0
+torch>=2.5.0
+# Dopo l'installazione, scaricare il modello italiano di spaCy:
+#   python -m spacy download it_core_news_lg

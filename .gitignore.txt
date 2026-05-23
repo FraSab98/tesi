@@ -1,0 +1,11 @@
+# esempio per progetto Python + React
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+node_modules/
+dist/
+build/
+.DS_Store
+*.log

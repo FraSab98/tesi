@@ -1,0 +1,44 @@
+# Core dependencies - install with: pip install -r requirements.txt
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic>=2.9.0
+pydantic-settings>=2.6.0
+sqlalchemy>=2.0.36
+asyncpg>=0.30.0
+alembic>=1.14.0
+anthropic>=0.42.0
+httpx>=0.28.0
+numpy>=2.1.0
+scikit-learn>=1.5.0
+python-multipart>=0.0.17
+python-jose[cryptography]>=3.3.0
+reportlab
+
+# Optional for Fase 6 (NLP/emotion analysis) - install with: pip install -r requirements-analysis.txt
+openai-whisper>=20240930
+spacy>=3.8.0
+librosa>=0.10.0
+transformers>=4.47.0
+torch>=2.5.0
+
+# Dev
+pytest>=8.3.0
+pytest-asyncio>=0.24.0
+#   = = = = = = = = = = = =   F A S E   6 :   A N A L I S I   N L P / P R O S O D I A / E M O T I O N   = = = = = = = = = = = =  
+ #   I n s t a l l a   c o n :   p i p   i n s t a l l   - r   r e q u i r e m e n t s - a n a l y s i s . t x t  
+ #  
+ #   A T T E N Z I O N E :   i n s t a l l a z i o n e   p e s a n t e   ( ~ 5   G B   d i   d i p e n d e n z e   +   m o d e l l i )  
+ #   S u   G P U   ( C U D A ) ,   i n s t a l l a   t o r c h   c o n   s u p p o r t o   G P U   p e r   a c c e l e r a r e  
+  
+  
+  
+ #   A n a l i s i   p r o s o d i c a  
+ librosa>=0.10.0 
+ soundfile>=0.12.0  
+ 
+  
+ #   T a s k   q u e u e  
+ celery>=5.4.0 
+ redis>=5.0.0  
+   
+ 
