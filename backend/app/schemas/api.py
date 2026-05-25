@@ -16,7 +16,7 @@ class PatientCreate(BaseModel):
     language: str = Field(default="it", min_length=2, max_length=5)
     education_years: Optional[int] = Field(None, ge=0, le=30)
     clinical_suspicion: Optional[
-        Literal["MCI", "Alzheimer", "ADHD", "Parkinson", "none"]
+        Literal["MCI", "Alzheimer", "ADHD", "Parkinson", "Narrative", "none"]
     ] = None
     sensory_deficits: dict = Field(default_factory=dict)
     handedness: Literal["right", "left", "ambidextrous"] = "right"
@@ -39,7 +39,7 @@ class SessionCreate(BaseModel):
 
 
 class TestConfigInSession(BaseModel):
-    test_type: Literal["CPT", "DigitSpan", "Stroop", "GoNoGo"]
+    test_type: Literal["CPT", "DigitSpan", "Stroop", "GoNoGo", "Narrative"]
     order: int = 0
     config: dict  # corrispondente al config schema del test
 

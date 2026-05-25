@@ -100,7 +100,7 @@ class Response(Base):
     trial_index: Mapped[int] = mapped_column(Integer)
     response_type: Mapped[str] = mapped_column(String(16))
     # click | key | vocal | none
-    response_value: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    response_value: Mapped[str | None] = mapped_column(Text, nullable=True)
     reaction_time_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
     is_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     audio_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
@@ -116,7 +116,7 @@ class AnalysisResult(Base):
     response_id: Mapped[str | None] = mapped_column(
         ForeignKey("responses.id"), nullable=True
     )
-    session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id"))
+    session_id: Mapped[str | None] = mapped_column(ForeignKey("sessions.id"), nullable=True)
     analysis_type: Mapped[str] = mapped_column(String(32))
     # transcription | linguistic | prosodic | sentiment | emotion
     features: Mapped[dict] = mapped_column(JSON)

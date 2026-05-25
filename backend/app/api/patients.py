@@ -90,11 +90,12 @@ async def list_patient_reports(
     for sess in sessions:
         scores_stmt = select(CognitiveScore).where(CognitiveScore.session_id == sess.id)
         scores = (await db.execute(scores_stmt)).scalars().all()
-        if not scores:
-            continue  # skip sessioni senza punteggi
 
         analyses_stmt = select(AnalysisResult).where(AnalysisResult.session_id == sess.id)
         analyses = (await db.execute(analyses_stmt)).scalars().all()
+
+        if not scores and not analyses:
+            continue  # skip solo le sessioni senza alcun dato
 
         report = aggregator.build_report(
             session={
@@ -116,10 +117,7 @@ async def list_patient_reports(
                 }
                 for s in scores
             ],
-            analysis_results=[
-                {"analysis_type": a.analysis_type, "features": a.features}
-                for a in analyses
-            ],
+            analysis_results=[a.features for a in analyses],
         )
         reports.append(report.to_dict())
 

@@ -162,9 +162,11 @@ class LongitudinalAnalyzer:
         for r in reports:
             date = r["session_date"]
 
-            # Score generale
-            self._append(series, "overall_cognitive_score",
-                         date, r.get("overall_cognitive_score", 0))
+            # Score generale (solo se la sessione ha test cognitivi,
+            # altrimenti le sessioni di sola analisi lo abbasserebbero a 0)
+            if r.get("test_scores"):
+                self._append(series, "overall_cognitive_score",
+                             date, r.get("overall_cognitive_score", 0))
 
             # Per ogni test
             for test in r.get("test_scores", []):

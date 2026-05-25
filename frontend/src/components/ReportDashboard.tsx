@@ -19,10 +19,16 @@ import {
 
 // ============ TYPES ============
 
+interface FlagDetail {
+  code: string;
+  description: string;
+  severity: number;
+}
+
 interface TestScore {
   test_type: string;
   scores: Record<string, unknown>;
-  flags: string[];
+  flags: FlagDetail[];
   clinical_note: string;
 }
 
@@ -164,8 +170,14 @@ export function ReportDashboard({ report, onExportPdf }: Props) {
         <div style={{ ...styles.card, ...styles.riskCard, borderColor: riskColor }}>
           <h3 style={styles.cardTitle}>Sintesi</h3>
           <div style={styles.scoreBig}>
-            {report.overall_cognitive_score.toFixed(1)}
-            <span style={styles.scoreMax}>/100</span>
+            {report.test_scores.length > 0 ? (
+              <>
+                {report.overall_cognitive_score.toFixed(1)}
+                <span style={styles.scoreMax}>/100</span>
+              </>
+            ) : (
+              <span style={styles.scoreMax}>Nessun test cognitivo</span>
+            )}
           </div>
           <div style={{ ...styles.riskBadge, background: riskColor }}>
             {riskLabel}
@@ -175,6 +187,7 @@ export function ReportDashboard({ report, onExportPdf }: Props) {
 
       {/* Charts */}
       <div style={styles.chartsGrid}>
+        {report.test_scores.length > 0 && (
         <div style={styles.card}>
           <h3 style={styles.cardTitle}>Punteggi per test</h3>
           <ResponsiveContainer width="100%" height={260}>
@@ -191,6 +204,7 @@ export function ReportDashboard({ report, onExportPdf }: Props) {
             </BarChart>
           </ResponsiveContainer>
         </div>
+        )}
 
         {radarData && (
           <div style={styles.card}>
@@ -219,6 +233,7 @@ export function ReportDashboard({ report, onExportPdf }: Props) {
       </div>
 
       {/* Flags per test */}
+      {report.test_scores.length > 0 && (
       <div style={styles.card}>
         <h3 style={styles.cardTitle}>Dettaglio test</h3>
         <table style={styles.table}>
@@ -245,7 +260,19 @@ export function ReportDashboard({ report, onExportPdf }: Props) {
                       <span style={{ color: "#43A047" }}>✓ nella norma</span>
                     ) : (
                       t.flags.map(f => (
-                        <span key={f} style={styles.flagBadge}>{f}</span>
+                        <span
+                          key={f.code}
+                          title={f.code}
+                          style={{
+                            ...styles.flagBadge,
+                            background:
+                              f.severity >= 3 ? "#C62828"
+                              : f.severity === 2 ? "#EF6C00"
+                              : "#F9A825",
+                          }}
+                        >
+                          {f.description}
+                        </span>
                       ))
                     )}
                   </td>
@@ -255,6 +282,7 @@ export function ReportDashboard({ report, onExportPdf }: Props) {
           </tbody>
         </table>
       </div>
+      )}
 
       {/* Findings e raccomandazioni */}
       <div style={styles.bottomGrid}>

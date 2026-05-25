@@ -1,11 +1,59 @@
-# esempio per progetto Python + React
+# ---------- Python / FastAPI ----------
 __pycache__/
-*.pyc
-.env
+*.py[cod]
+*.egg-info/
 .venv/
 venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---------- Segreti / config (MAI committare) ----------
+.env
+.env.*
+!.env.example
+*.key
+secrets/
+
+# ---------- Node / React / TypeScript ----------
 node_modules/
 dist/
 build/
+.vite/
+*.local
+coverage/
+
+# ---------- Modelli NLP / dati pesanti ----------
+# modelli scaricati (spaCy it_core_news_lg, SBERT, ecc.)
+models/
+*.bin
+*.safetensors
+*.pt
+*.onnx
+# cache HuggingFace / spaCy
+.cache/
+~/.cache/
+
+# ---------- MLflow ----------
+mlruns/
+mlartifacts/
+*.db
+
+# ---------- Dati clinici / dataset (privacy!) ----------
+data/
+*.csv
+*.tsv
+*.wav
+*.mp3
+# se hai dati DementiaBank/ADReSS o seed questions sensibili
+
+# ---------- Report / output generati ----------
+outputs/
+*.pdf
+
+# ---------- IDE / sistema ----------
+.vscode/
+.idea/
 .DS_Store
 *.log

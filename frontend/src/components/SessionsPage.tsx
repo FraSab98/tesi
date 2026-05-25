@@ -157,7 +157,7 @@ export function SessionsPage() {
                     </div>
                   </td>
                   <td style={td}>
-                    <StatusBadge status={s.status} scored={s.n_scored > 0} />
+                    <StatusBadge status={s.status} scored={s.n_scored > 0 || s.n_analyses > 0} />
                   </td>
                   <td style={{ ...td, maxWidth: 200 }}>
                     <span style={{ color: s.notes ? colors.body : colors.soft, fontSize: "0.88rem" }}>
@@ -166,14 +166,14 @@ export function SessionsPage() {
                   </td>
                   <td style={{ ...td, textAlign: "right" }}>
                     <div style={{ display: "flex", gap: "0.25rem", justifyContent: "flex-end" }}>
-                      {s.n_scored > 0 && (
+                      {(s.n_scored > 0 || s.n_analyses > 0) && (
                         <Link to={`/sessions/${s.id}/report`}>
                           <Button size="sm" variant="secondary">
                             Report <Icon name="arrow" size={14} />
                           </Button>
                         </Link>
                       )}
-                      {s.n_scored === 0 && (
+                      {(s.n_scored === 0 && s.n_analyses === 0) && (
                         <Link to={`/run/${s.id}`}>
                           <Button size="sm" variant="ghost">
                             Link paziente

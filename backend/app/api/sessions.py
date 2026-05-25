@@ -29,10 +29,12 @@ from app.schemas.cpt import CPTConfig
 from app.schemas.digit_span import DigitSpanConfig
 from app.schemas.stroop import StroopConfig
 from app.schemas.go_nogo import GoNoGoConfig
+from app.schemas.narrative import NarrativeConfig
 from app.services.tests.cpt_generator import CPTGenerator
 from app.services.tests.digit_span_generator import DigitSpanGenerator
 from app.services.tests.stroop_generator import StroopGenerator
 from app.services.tests.go_nogo_generator import GoNoGoGenerator
+from app.services.tests.narrative_generator import NarrativeGenerator
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/sessions", tags=["sessions"])
@@ -44,6 +46,7 @@ _TEST_REGISTRY = {
     "DigitSpan": (DigitSpanConfig, DigitSpanGenerator),
     "Stroop": (StroopConfig, StroopGenerator),
     "GoNoGo": (GoNoGoConfig, GoNoGoGenerator),
+    "Narrative": (NarrativeConfig, NarrativeGenerator),
 }
 
 
@@ -180,6 +183,8 @@ async def list_sessions(
         tc_list = (await db.execute(tc_count_stmt)).scalars().all()
         score_count_stmt = select(CognitiveScore).where(CognitiveScore.session_id == sess.id)
         score_list = (await db.execute(score_count_stmt)).scalars().all()
+        analysis_count_stmt = select(AnalysisResult).where(AnalysisResult.session_id == sess.id)
+        analysis_list = (await db.execute(analysis_count_stmt)).scalars().all()
 
         out.append({
             "id": sess.id,
@@ -194,6 +199,7 @@ async def list_sessions(
             "completed_at": sess.completed_at,
             "n_tests": len(tc_list),
             "n_scored": len(score_list),
+            "n_analyses": len(analysis_list),
             "test_types": [tc.test_type for tc in tc_list],
         })
     return out
@@ -297,10 +303,10 @@ async def get_session_report(
     analyses_stmt = select(AnalysisResult).where(AnalysisResult.session_id == session_id)
     analyses = (await db.execute(analyses_stmt)).scalars().all()
 
-    if not scores:
+    if not scores and not analyses:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            "Nessun punteggio disponibile per questa sessione — il paziente non ha ancora completato i test",
+            "Nessun dato per questa sessione: nessun test completato ne analisi registrata.",
         )
 
     aggregator = ReportAggregator()
@@ -324,12 +330,11 @@ async def get_session_report(
             }
             for s in scores
         ],
-        analysis_results=[
-            {"analysis_type": a.analysis_type, "features": a.features}
-            for a in analyses
-        ],
+        analysis_results=[a.features for a in analyses],
     )
-    return report.to_dict()
+    result = report.to_dict()
+    result["analyses_detail"] = [a.features for a in analyses]
+    return result
 
 
 def _count_stimuli(data: dict) -> int:

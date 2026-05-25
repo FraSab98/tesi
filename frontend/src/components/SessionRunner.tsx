@@ -11,6 +11,7 @@ import { CPTRunner } from "../tests/CPTRunner";
 import { DigitSpanRunner } from "../tests/DigitSpanRunner";
 import { StroopRunner } from "../tests/StroopRunner";
 import { GoNoGoRunner } from "../tests/GoNoGoRunner";
+import { NarrativeRunner } from "../tests/NarrativeRunner";
 
 interface TestConfig {
   test_config_id: string;
@@ -116,6 +117,10 @@ export function SessionRunner({ sessionId }: Props) {
       {currentTest.test_type === "GoNoGo" && (
         // @ts-expect-error
         <GoNoGoRunner {...commonProps} data={currentStim.data} />
+      )}
+      {currentTest.test_type === "Narrative" && (
+        // @ts-expect-error
+        <NarrativeRunner {...commonProps} data={currentStim.data} />
       )}
     </div>
   );

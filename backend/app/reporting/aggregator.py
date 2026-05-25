@@ -18,6 +18,23 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
+# Descrizioni leggibili dei flag clinici: il medico legge la spiegazione,
+# non il codice interno. Il codice resta disponibile per logica/frontend.
+FLAG_DESCRIPTIONS = {
+    "attention_score_low":        "Attenzione sostenuta sotto la soglia clinica.",
+    "high_rt_variability":        "Tempi di reazione molto irregolari: l'attenzione oscilla nel tempo (pattern compatibile con ADHD/MCI).",
+    "high_omission_rate":         "Molti bersagli mancati: difficolta a mantenere l'attenzione nel tempo.",
+    "high_attention_instability": "Instabilita attentiva combinata elevata (variabilita dei tempi di reazione + lapsus).",
+    "low_fine_grained":           "Accuratezza fine della ripetizione bassa (distanza di edit elevata): segnale precoce di MCI (Asgari 2020).",
+    "low_span":                   "Span di memoria sotto la norma per l'eta adulta.",
+    "high_interference":          "Forte effetto interferenza Stroop: difficolta di inibizione/controllo cognitivo.",
+    "low_cw_accuracy":            "Accuratezza bassa nella condizione incongruente (parola-colore).",
+    "above_mmse_cutoff":          "Numero di errori oltre il cut-off MMSE: compromissione marcata.",
+    "above_moca_cutoff":          "Numero di errori oltre il cut-off MoCA: possibile decadimento cognitivo lieve.",
+    "high_risk_score":            "Punteggio di rischio dello screening elevato.",
+}
+
+
 @dataclass
 class TestScoreSummary:
     """Riepilogo del punteggio di un singolo test in una sessione."""
@@ -80,7 +97,14 @@ class SessionReport:
                 {
                     "test_type": t.test_type,
                     "scores": t.scores,
-                    "flags": t.flags,
+                    "flags": [
+                        {
+                            "code": f,
+                            "description": FLAG_DESCRIPTIONS.get(f, f),
+                            "severity": ReportAggregator.FLAG_SEVERITY.get(f, 1),
+                        }
+                        for f in t.flags
+                    ],
                     "clinical_note": t.clinical_note,
                 }
                 for t in self.test_scores
@@ -120,6 +144,23 @@ class ReportAggregator:
             "total_error_mild": 2,           # cut-off MoCA
         },
     }
+
+    # Gravita dei flag clinici: usata per pesare il livello di rischio.
+    # 3 = severo, 2 = moderato, 1 = lieve/aspecifico. Da calibrare sui dati.
+    FLAG_SEVERITY = {
+        "attention_score_low":        3,
+        "above_mmse_cutoff":          3,
+        "high_risk_score":            3,
+        "low_span":                   3,
+        "high_omission_rate":         2,
+        "low_fine_grained":           2,
+        "high_interference":          2,
+        "above_moca_cutoff":          2,
+        "high_attention_instability": 2,
+        "high_rt_variability":        1,
+        "low_cw_accuracy":            1,
+    }
+    DEFAULT_FLAG_WEIGHT = 1
 
     def build_report(
         self,
@@ -327,16 +368,34 @@ class ReportAggregator:
         mc: MultiChannelSummary,
         overall: float,
     ) -> str:
-        """Determina il livello di rischio complessivo."""
-        # Conteggio flag critici
-        critical_flags = 0
-        for s in summaries:
-            critical_flags += len([f for f in s.flags if "high" in f or "low" in f or "cutoff" in f])
+        """Livello di rischio basato sulla gravita *pesata* dei flag, non sul conteggio.
 
-        # Regole di decisione
-        if overall < 50 or critical_flags >= 4:
+        Un flag severo pesa piu di tre flag lievi, cosi un profilo uniformemente
+        lieve non viene escalato a 'high' solo per accumulo di segnali deboli.
+        """
+        weighted = 0
+        has_severe = False
+        for s in summaries:
+            for f in s.flags:
+                w = self.FLAG_SEVERITY.get(f, self.DEFAULT_FLAG_WEIGHT)
+                weighted += w
+                if w >= 3:
+                    has_severe = True
+
+        # Il multicanale incide, ma con peso cognitivo contenuto
+        if mc.avg_cognitive_strain > 50:
+            weighted += 2
+        if mc.avg_emotional_distress > 60:
+            weighted += 1  # contributo emotivo, non cognitivo
+
+        # Se non ci sono test cognitivi (es. sessione di sola analisi multi-canale),
+        # il punteggio cognitivo e 0 solo perche assente: non deve forzare 'high'.
+        has_cognitive = len(summaries) > 0
+
+        # Decisione: serve gravita reale per arrivare a 'high'
+        if (has_cognitive and overall < 50) or weighted >= 9 or (has_severe and weighted >= 6):
             return "high"
-        if overall < 70 or critical_flags >= 2 or mc.avg_cognitive_strain > 50:
+        if (has_cognitive and overall < 70) or weighted >= 4 or has_severe or mc.avg_cognitive_strain > 50:
             return "medium"
         return "low"
 

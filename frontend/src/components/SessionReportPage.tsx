@@ -9,9 +9,12 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   downloadSessionReportPdf,
   getSessionReport,
+  getAnalysisResults,
+  getAnalysisResult,
   SessionReportData,
 } from "../api/client";
 import { ReportDashboard } from "./ReportDashboard";
+import { AnalysisResultView } from "./MultichannelPage";
 import { Card, Button, Icon } from "./ui";
 import { colors } from "../styles/theme";
 
@@ -21,6 +24,7 @@ export function SessionReportPage() {
   const [report, setReport] = useState<SessionReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [analyses, setAnalyses] = useState<Record<string, unknown>[]>([]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -30,6 +34,17 @@ export function SessionReportPage() {
       try {
         const r = await getSessionReport(sessionId);
         setReport(r);
+        try {
+          const list = await getAnalysisResults(sessionId);
+          const details = await Promise.all(
+            (list as Array<{ id: string }>).map((a) => getAnalysisResult(a.id))
+          );
+          setAnalyses(
+            details.map((d: { features: Record<string, unknown> }) => d.features)
+          );
+        } catch {
+          /* il dettaglio analisi e opzionale */
+        }
       } catch (e: unknown) {
         const err = e as { response?: { data?: { detail?: string } }; message?: string };
         setError(
@@ -109,6 +124,18 @@ export function SessionReportPage() {
         </Button>
       </div>
       <ReportDashboard report={report} onExportPdf={handleExportPdf} />
+      {analyses.length > 0 && (
+        <div style={{ marginTop: "2rem" }}>
+          <h2 style={{ fontSize: "1.2rem", marginBottom: "1rem" }}>
+            Dettaglio analisi multicanale
+          </h2>
+          {analyses.map((f, i) => (
+            <div key={i} style={{ marginBottom: "1.5rem" }}>
+              <AnalysisResultView result={f} />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

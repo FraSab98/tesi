@@ -16,6 +16,7 @@ import { SessionReportPage } from "./components/SessionReportPage";
 import { MultichannelPage } from "./components/MultichannelPage";
 import { LongitudinalPage } from "./components/LongitudinalPage";
 import { SessionRunner } from "./components/SessionRunner";
+import { AnalysisHistory } from "./components/AnalysisHistory";
 
 function RunWrapper() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -27,6 +28,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+	<Route path="/analyses" element={<AnalysisHistory />} />
         {/* Area medico */}
         <Route element={<Layout />}>
           <Route path="/" element={<HomePage />} />

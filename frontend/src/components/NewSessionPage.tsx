@@ -18,7 +18,7 @@ import {
 import { Card, Button, Badge, Icon } from "./ui";
 import { colors, font, radius, shadow } from "../styles/theme";
 
-type TestType = "CPT" | "DigitSpan" | "Stroop" | "GoNoGo";
+type TestType = "CPT" | "DigitSpan" | "Stroop" | "GoNoGo" | "Narrative";
 
 const DEFAULT_CLINICIAN = "dr_default";
 
@@ -46,6 +46,11 @@ const TEST_META: Record<TestType, { title: string; description: string; duration
     title: "Go/No-Go",
     description: "Inibizione della risposta. Fase di formazione, differenziazione e inversione delle regole.",
     duration: "~6 minuti",
+  },
+  Narrative: {
+    title: "Narrative — Produzione verbale",
+    description: "Il paziente descrive un'immagine o racconta (es. la giornata perfetta). La risposta vocale o testuale alimenta l'analisi multi-canale.",
+    duration: "~3 minuti",
   },
 };
 
@@ -94,6 +99,16 @@ function defaultConfig(t: TestType): Record<string, unknown> {
         isi_min_ms: 1300,
         isi_max_ms: 7500,
         response_feedback: false,
+      };
+    case "Narrative":
+      return {
+        prompt_type: "perfect_day",   // picture_description | perfect_day | daily_routine | story_retell
+        language: "it",
+        response_mode: "text",        // 'text' di default: robusto anche senza Whisper
+        min_response_seconds: 30,
+        min_words: 25,
+        image_ref: null,              // obbligatorio solo se prompt_type = picture_description
+        run_multichannel: true,
       };
   }
 }

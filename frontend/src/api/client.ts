@@ -91,6 +91,7 @@ export interface SessionListItem {
   completed_at: string | null;
   n_tests: number;
   n_scored: number;
+  n_analyses: number;
   test_types: string[];
 }
 
@@ -160,7 +161,7 @@ export interface SessionReportData {
   test_scores: Array<{
     test_type: string;
     scores: Record<string, unknown>;
-    flags: string[];
+    flags: Array<{ code: string; description: string; severity: number }>;
     clinical_note: string;
   }>;
   multichannel?: {
@@ -219,5 +220,34 @@ export async function analyzeAudio(data: {
     async_mode: false,
     ...data,
   });
+  return resp.data;
+}
+
+export async function analyzeTextForPatient(patientId: string, text: string, language = "it") {
+  const resp = await api.post("/analyze/session/text", {
+    patient_id: patientId, text, language,
+  });
+  return resp.data as { session_id: string; result: Record<string, unknown> };
+}
+
+export async function analyzeAudioForPatient(
+  patientId: string,
+  data: { audio_base64: string; audio_format: string; language?: string; initial_prompt?: string }
+) {
+  const resp = await api.post("/analyze/session/audio", {
+    patient_id: patientId, language: "it", ...data,
+  });
+  return resp.data as { session_id: string; result: Record<string, unknown> };
+}
+
+export async function getAnalysisResults(sessionId?: string) {
+  const resp = await api.get("/analyze/results", {
+    params: sessionId ? { session_id: sessionId } : {},
+  });
+  return resp.data;
+}
+
+export async function getAnalysisResult(id: string) {
+  const resp = await api.get(`/analyze/results/${id}`);
   return resp.data;
 }

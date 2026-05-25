@@ -211,13 +211,15 @@ class PDFReportGenerator:
 
     def _add_multichannel_section(self, story, report):
         mc = report.get("multichannel")
-        if not mc or mc.get("n_audio_responses", 0) == 0:
+        if not mc:
             return
 
         story.append(Paragraph("Analisi multi-canale", self.styles["subtitle"]))
+        n = mc.get("n_audio_responses", 0)
         story.append(Paragraph(
-            f"Integrazione di {mc['n_audio_responses']} risposta/e audio con pipeline "
-            f"NLP + Prosodia + Sentiment/Emotion.",
+            (f"Integrazione di {n} risposta/e con pipeline NLP + Prosodia + Sentiment/Emotion."
+             if n else
+             "Analisi linguistica, sentiment ed emozioni della risposta verbale."),
             self.styles["body"]
         ))
 
@@ -243,6 +245,113 @@ class PDFReportGenerator:
         ]))
         story.append(t)
         story.append(Spacer(1, 0.3 * cm))
+
+        # Dettaglio completo per ogni analisi (come nella pagina web)
+        details = report.get("analyses_detail") or []
+        if details:
+            story.append(Paragraph("Dettaglio analisi", self.styles["subtitle"]))
+        for a in details:
+            self._add_analysis_detail(story, a)
+
+    def _simple_table(self, story, data, col_widths):
+        t = Table(data, colWidths=col_widths)
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), self.PRIMARY),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("PADDING", (0, 0), (-1, -1), 5),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.lightgrey),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 0.25 * cm))
+
+    def _add_analysis_detail(self, story, a):
+        """Riproduce nel PDF tutte le sezioni mostrate a schermo per una analisi."""
+        # --- Trascrizione ---
+        transcript = a.get("transcript") or a.get("text")
+        if transcript:
+            story.append(Paragraph("Trascrizione analizzata", self.styles["h3"]))
+            story.append(Paragraph(str(transcript), self.styles["body"]))
+            story.append(Spacer(1, 0.2 * cm))
+
+        # --- Indicatori compositi ---
+        strain = float(a.get("cognitive_strain_index", 0) or 0)
+        distress = float(a.get("emotional_distress_index", 0) or 0)
+        quality = float(a.get("communication_quality_index", 0) or 0)
+        self._simple_table(story, [
+            ["Indicatore", "Valore (0-100)", "Interpretazione"],
+            ["Sforzo cognitivo", f"{strain:.1f}", self._interpret_strain(strain)],
+            ["Disagio emotivo", f"{distress:.1f}", self._interpret_distress(distress)],
+            ["Qualita comunicazione", f"{quality:.1f}", self._interpret_quality(quality)],
+        ], [4.5 * cm, 3 * cm, 9.5 * cm])
+
+        # --- Profilo linguistico ---
+        ling = a.get("linguistic") or {}
+        if ling:
+            story.append(Paragraph("Profilo linguistico", self.styles["h3"]))
+            labels = [
+                ("word_count", "Numero parole"),
+                ("sentence_count", "Numero frasi"),
+                ("mean_sentence_length", "Lunghezza media frase"),
+                ("lexical_diversity", "Diversita lessicale (TTR)"),
+                ("mattr", "MATTR"),
+                ("lexical_density", "Densita lessicale"),
+                ("cohesion", "Coesione"),
+                ("mean_syntactic_depth", "Profondita sintattica media"),
+            ]
+            rows = [["Metrica", "Valore"]]
+            for key, lab in labels:
+                if ling.get(key) is not None:
+                    v = ling[key]
+                    rows.append([lab, f"{v:.3f}" if isinstance(v, float) else str(v)])
+            if len(rows) > 1:
+                self._simple_table(story, rows, [9 * cm, 8 * cm])
+
+            pos = ling.get("pos_distribution") or {}
+            if pos:
+                story.append(Paragraph("Distribuzione grammaticale (POS)", self.styles["body"]))
+                pos_rows = [["Categoria", "Frequenza"]]
+                for k, v in sorted(pos.items(), key=lambda x: -float(x[1]))[:12]:
+                    pos_rows.append([str(k), f"{float(v) * 100:.1f}%"])
+                self._simple_table(story, pos_rows, [9 * cm, 8 * cm])
+
+        # --- Profilo prosodico (se audio) ---
+        pros = a.get("prosodic") or {}
+        if pros:
+            story.append(Paragraph("Profilo vocale (prosodia)", self.styles["h3"]))
+            rows = [["Metrica", "Valore"]]
+            for k, v in pros.items():
+                if isinstance(v, (int, float)):
+                    rows.append([str(k), f"{v:.2f}" if isinstance(v, float) else str(v)])
+            if len(rows) > 1:
+                self._simple_table(story, rows, [9 * cm, 8 * cm])
+
+        # --- Stato emotivo ---
+        sent = a.get("sentiment") or {}
+        emo = a.get("emotion") or {}
+        if sent or emo:
+            story.append(Paragraph("Stato emotivo", self.styles["h3"]))
+            if sent.get("label"):
+                story.append(Paragraph(
+                    f"Sentiment: {sent.get('label')} (confidenza {float(sent.get('score', 0)):.2f})",
+                    self.styles["body"],
+                ))
+            emotions = emo.get("emotions") or {}
+            if emotions:
+                erows = [["Emozione", "Probabilita"]]
+                for k, v in sorted(emotions.items(), key=lambda x: -float(x[1])):
+                    erows.append([str(k), f"{float(v) * 100:.1f}%"])
+                self._simple_table(story, erows, [9 * cm, 8 * cm])
+            elif emo.get("dominant"):
+                story.append(Paragraph(
+                    f"Emozione dominante: {emo.get('dominant')} "
+                    f"({float(emo.get('dominant_score', 0)):.2f})",
+                    self.styles["body"],
+                ))
+
+        story.append(Spacer(1, 0.4 * cm))
 
     def _add_findings_and_recommendations(self, story, report):
         findings = report.get("key_findings", [])

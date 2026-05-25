@@ -8,7 +8,11 @@
  */
 
 import React, { useEffect, useRef, useState } from "react";
-import { analyzeAudio, analyzeText } from "../api/client";
+import { Link } from "react-router-dom";
+import {
+  analyzeTextForPatient, analyzeAudioForPatient,
+  listPatients, createPatient, Patient,
+} from "../api/client";
 import { Card, Button, Badge, Icon } from "./ui";
 import { colors, font, radius } from "../styles/theme";
 
@@ -16,31 +20,137 @@ type Tab = "text" | "audio";
 
 export function MultichannelPage() {
   const [tab, setTab] = useState<Tab>("text");
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [patient, setPatient] = useState<Patient | null>(null);
+  const [lastSessionId, setLastSessionId] = useState<string | null>(null);
+  const [gateError, setGateError] = useState<string | null>(null);
+  const [showNew, setShowNew] = useState(false);
+  const [newCode, setNewCode] = useState("");
+  const [newAge, setNewAge] = useState("70");
+  const [creating, setCreating] = useState(false);
 
+  useEffect(() => {
+    listPatients().then(setPatients).catch(() => {});
+  }, []);
+
+  const createAndSelect = async () => {
+    if (!newCode.trim()) {
+      setGateError("Inserisci un codice paziente");
+      return;
+    }
+    setCreating(true);
+    setGateError(null);
+    try {
+      const p = await createPatient({
+        external_code: newCode.trim(),
+        age: Number(newAge) || 0,
+        language: "it",
+      } as any);
+      setPatients([p, ...patients]);
+      setPatient(p);
+    } catch (e: any) {
+      setGateError(e?.response?.data?.detail || e?.message || "Impossibile creare il paziente");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  // ===== GATE: prima scegli o crea il paziente =====
+  if (!patient) {
+    return (
+      <div>
+        <header style={{ marginBottom: "1.5rem" }}>
+          <h1 style={{ marginBottom: "0.25rem" }}>Analisi multicanale</h1>
+          <p style={{ margin: 0, color: colors.muted, maxWidth: 720 }}>
+            Scegli o crea il paziente: l'analisi sara salvata come una sessione a se,
+            visibile nella lista sessioni, e potrai rivederne il report.
+          </p>
+        </header>
+
+        {gateError && <div style={errorBox}>{gateError}</div>}
+
+        <Card title="Scegli un paziente" accent>
+          <div style={{ display: "grid", gap: "0.5rem", marginBottom: "1rem" }}>
+            {patients.length === 0 && (
+              <p style={{ color: colors.muted, margin: 0 }}>Nessun paziente. Creane uno qui sotto.</p>
+            )}
+            {patients.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setPatient(p)}
+                style={{
+                  textAlign: "left", padding: "0.7rem 1rem",
+                  border: `1px solid ${colors.border}`, borderRadius: radius.md,
+                  background: colors.surface2, cursor: "pointer",
+                }}
+              >
+                <strong>{p.external_code}</strong>
+                <span style={{ color: colors.muted }}> · {p.age} anni · {p.language}</span>
+              </button>
+            ))}
+          </div>
+
+          {!showNew ? (
+            <Button variant="secondary" onClick={() => setShowNew(true)}>+ Nuovo paziente</Button>
+          ) : (
+            <div style={{ display: "grid", gap: "0.5rem", gridTemplateColumns: "2fr 1fr auto", alignItems: "end" }}>
+              <div>
+                <Label>Codice paziente</Label>
+                <input style={inputStyle} value={newCode} onChange={(e) => setNewCode(e.target.value)} placeholder="es. P-001" />
+              </div>
+              <div>
+                <Label>Eta</Label>
+                <input style={inputStyle} value={newAge} onChange={(e) => setNewAge(e.target.value)} />
+              </div>
+              <Button onClick={createAndSelect} disabled={creating}>
+                {creating ? "Creo..." : "Crea e procedi"}
+              </Button>
+            </div>
+          )}
+        </Card>
+      </div>
+    );
+  }
+
+  // ===== Paziente scelto: esegui l'analisi =====
   return (
     <div>
       <header style={{ marginBottom: "1.5rem" }}>
         <h1 style={{ marginBottom: "0.25rem" }}>Analisi multicanale</h1>
         <p style={{ margin: 0, color: colors.muted, maxWidth: 720 }}>
-          Decomposizione di una risposta verbale in quattro canali: linguistico (fluenza,
-          sintassi), prosodico (tempo, pause, energia), sentiment e emozioni discrete.
-          Qui in modalità singola, fuori da una sessione.
+          Paziente <strong>{patient.external_code}</strong> — ogni analisi crea una sessione
+          dedicata (solo multi-canale) che trovi nella lista sessioni.{" "}
+          <button
+            onClick={() => { setPatient(null); setLastSessionId(null); }}
+            style={{ background: "none", border: "none", color: colors.ink2, cursor: "pointer", textDecoration: "underline", padding: 0 }}
+          >
+            cambia paziente
+          </button>
         </p>
       </header>
 
       <div style={{ display: "flex", gap: "0.25rem", marginBottom: "1rem" }}>
-        <TabBtn active={tab === "text"} onClick={() => setTab("text")}>
-          Testo
-        </TabBtn>
-        <TabBtn active={tab === "audio"} onClick={() => setTab("audio")}>
-          Audio
-        </TabBtn>
+        <TabBtn active={tab === "text"} onClick={() => setTab("text")}>Testo</TabBtn>
+        <TabBtn active={tab === "audio"} onClick={() => setTab("audio")}>Audio</TabBtn>
       </div>
 
-      {tab === "text" ? <TextAnalysisPanel /> : <AudioAnalysisPanel />}
+      {tab === "text" ? (
+        <TextAnalysisPanel patientId={patient.id} onAnalyzed={setLastSessionId} />
+      ) : (
+        <AudioAnalysisPanel patientId={patient.id} onAnalyzed={setLastSessionId} />
+      )}
+
+      {lastSessionId && (
+        <div style={{ marginTop: "1.5rem" }}>
+          <Link to={`/sessions/${lastSessionId}/report`} style={{ color: colors.ink2, fontWeight: 600 }}>
+            → Vedi il report di questa analisi
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
+
 
 function TabBtn({
   active,
@@ -72,7 +182,7 @@ function TabBtn({
 
 // ============ TEXT ============
 
-function TextAnalysisPanel() {
+function TextAnalysisPanel({ patientId, onAnalyzed }: { patientId: string; onAnalyzed: (id: string) => void }) {
   const [text, setText] = useState(
     "Ieri sono andato al mercato a comprare la frutta, poi… ehm… volevo andare in farmacia ma mi sono dimenticato dove fosse."
   );
@@ -87,8 +197,9 @@ function TextAnalysisPanel() {
     setError(null);
     setResult(null);
     try {
-      const r = await analyzeText({ text, language });
-      setResult(r);
+      const resp = await analyzeTextForPatient(patientId, text, language);
+      setResult(resp.result);
+      onAnalyzed(resp.session_id);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { detail?: string } }; message?: string };
       setError(err.response?.data?.detail || err.message || "Errore durante l'analisi");
@@ -152,7 +263,7 @@ function TextAnalysisPanel() {
 
 // ============ AUDIO ============
 
-function AudioAnalysisPanel() {
+function AudioAnalysisPanel({ patientId, onAnalyzed }: { patientId: string; onAnalyzed: (id: string) => void }) {
   const [inputMode, setInputMode] = useState<"record" | "upload">("record");
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -194,16 +305,14 @@ function AudioAnalysisPanel() {
     setError(null);
     setResult(null);
     try {
-      const resp = await analyzeAudio({
+      const resp = await analyzeAudioForPatient(patientId, {
         audio_base64: fileBase64,
         audio_format: fileFormat,
         language,
-        session_id: "adhoc",
-        response_id: `adhoc_${Date.now()}`,
         initial_prompt: initialPrompt || undefined,
-        async_mode: false,
       });
-      setResult(resp as Record<string, unknown>);
+      setResult(resp.result);
+      onAnalyzed(resp.session_id);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { detail?: string } }; message?: string };
       setError(err.response?.data?.detail || err.message || "Errore durante l'analisi audio");
@@ -585,7 +694,7 @@ function levelColor(l: Level): string {
   return l === "ok" ? colors.accent : l === "warn" ? colors.warn : colors.risk;
 }
 
-function AnalysisResultView({ result }: { result: Record<string, unknown> }) {
+export function AnalysisResultView({ result }: { result: Record<string, unknown> }) {
   const r = (result.result || result) as Record<string, unknown>;
 
   const transcript = (r.transcript || r.text) as string | undefined;

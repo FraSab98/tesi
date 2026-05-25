@@ -54,7 +54,7 @@ timeout /t 8 /nobreak >nul
 REM ============ 2. BACKEND ============
 echo.
 echo === 2/3 Avvio backend FastAPI (nuova finestra) ===
-start "BACKEND - Cognitive Platform" cmd /k "cd /d "%~dp0backend" && .venv\Scripts\activate.bat && echo Backend in avvio su http://localhost:8000/docs && uvicorn app.main:app --reload --port 8000"
+start "BACKEND - Cognitive Platform" cmd /k "cd /d "%~dp0backend" && .venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000"
 echo [OK] Backend avviato
 echo Attendo 10 secondi che il backend sia pronto...
 timeout /t 10 /nobreak >nul
