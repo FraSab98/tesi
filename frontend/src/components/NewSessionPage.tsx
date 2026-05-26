@@ -743,6 +743,47 @@ function TestConfigEditor({
       </div>
     );
   }
+  if (type === "Narrative") {
+    const promptType = String(config.prompt_type || "perfect_day");
+    return (
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.75rem" }}>
+        <Field label="Tipo di consegna">
+          <select
+            value={promptType}
+            onChange={(e) => onChange({ prompt_type: e.target.value })}
+            style={inputStyle}
+          >
+            <option value="perfect_day">Giornata ideale</option>
+            <option value="daily_routine">Routine quotidiana</option>
+            <option value="story_retell">Ripetizione di una storia</option>
+            <option value="picture_description">Descrizione di un'immagine</option>
+          </select>
+        </Field>
+        <Field label="Modalità di risposta">
+          <select
+            value={String(config.response_mode || "vocal")}
+            onChange={(e) => onChange({ response_mode: e.target.value })}
+            style={inputStyle}
+          >
+            <option value="vocal">Vocale (parlato)</option>
+            <option value="text">Testo</option>
+            <option value="both">Entrambe</option>
+          </select>
+        </Field>
+        {promptType === "picture_description" && (
+          <Field label="Immagine (URL o /images/…)">
+            <input
+              type="text"
+              value={String(config.image_ref || "")}
+              onChange={(e) => onChange({ image_ref: e.target.value })}
+              placeholder="/images/cookie_theft.jpg"
+              style={inputStyle}
+            />
+          </Field>
+        )}
+      </div>
+    );
+  }
   return null;
 }
 
